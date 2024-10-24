@@ -10,7 +10,8 @@
             color: white;
             font-family: monospace;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            justify-content: flex-start;
             align-items: center;
             height: 100vh;
             margin: 0;
@@ -18,18 +19,36 @@
         #terminal {
             white-space: pre;
             font-size: 1.2em;
-            color: white;
+        }
+        .shade0 { color: #999999; }
+        .shade1 { color: #AAAAAA; }
+        .shade2 { color: #BBBBBB; }
+        .shade3 { color: #CCCCCC; }
+        .shade4 { color: #EEEEEE; }
+        .shade5 { color: #FFFFFF; }
+        #toggle {
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
+    <button id="toggle">Spin it!</button>
     <div id="terminal"></div>
     <script>
         let A = 0, B = 0;
+        let mouseDown = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let velocityA = 0;
+        let velocityB = 0;
+        let friction = 0.95;
+        let autoRotate = true;
 
         function renderDonut() {
             const b = new Array(1760).fill(' ');
             const z = new Array(1760).fill(0);
+            const shades = ["shade0", "shade1", "shade2", "shade3", "shade4", "shade5"];
+            const characters = ".:-=+*#%@";
             for (let j = 0; j < 6.28; j += 0.07) {
                 for (let i = 0; i < 6.28; i += 0.02) {
                     const c = Math.sin(i);
@@ -43,15 +62,17 @@
                     const m = Math.cos(B);
                     const n = Math.sin(B);
                     const t = c * h * g - f * e;
-                    const x = Math.floor(40 + 30 * D * (l * h * m - t * n));
-                    const y = Math.floor(12 + 15 * D * (l * h * n + t * m));
+                    const x = Math.floor(40 + 30 * D * (l * h * m + t * n));
+                    const y = Math.floor(12 + 15 * D * (l * h * n - t * m));
                     const o = x + 80 * y;
                     if (y >= 0 && y < 22 && x >= 0 && x < 80 && o >= 0 && o < 1760) {
                         if (D > z[o]) {
                             z[o] = D;
                             let N = Math.floor(8 * ((f * e - c * d * g) * m - c * d * e - f * g - l * d * n));
-                            N = Math.max(0, Math.min(11, N));  // Ensure N is between 0 and 11 to index into the character set
-                            b[o] = ".,-~:;=!*#$@"[N];
+                            N = Math.max(0, Math.min(8, N));  // Ensure N is between 0 and 8 to index into the character set
+                            const char = characters[N];
+                            const shadeIndex = Math.floor(N / 2); // Map character level to shade level (0-4)
+                            b[o] = `<span class="${shades[shadeIndex]}">${char}</span>`;
                         }
                     }
                 }
@@ -60,18 +81,73 @@
             for (let k = 0; k < 1760; k++) {
                 output += (k % 80 === 79) ? '\n' : b[k];
             }
-            document.getElementById("terminal").textContent = output;
-            A += 0.03;  // Adjusted for smoother rotation
-            B += 0.015;
+            document.getElementById("terminal").innerHTML = output;
         }
 
         function animate() {
+            if (autoRotate) {
+                A += 0.03;
+                B += 0.015;
+            }
+            A += velocityA;
+            B += velocityB;
+            velocityA *= friction;
+            velocityB *= friction;
             renderDonut();
-            setTimeout(animate, 10); // Adjust speed here (50ms per frame for stability)
+            requestAnimationFrame(animate);
         }
 
         // Start the animation
         animate();
+
+        // Handle mouse events to control rotation
+        document.addEventListener('mousedown', (event) => {
+            mouseDown = true;
+            lastMouseX = event.clientX;
+            lastMouseY = event.clientY;
+        });
+
+        document.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        document.addEventListener('mousemove', (event) => {
+            if (mouseDown) {
+                const deltaX = event.clientX - lastMouseX;
+                const deltaY = event.clientY - lastMouseY;
+                velocityA = -deltaY * 0.01;  // Invert direction to match swiping motion
+                velocityB = -deltaX * 0.01;  // Invert direction to match swiping motion
+                lastMouseX = event.clientX;
+                lastMouseY = event.clientY;
+            }
+        });
+
+        // Handle touch events for mobile
+        document.addEventListener('touchstart', (event) => {
+            mouseDown = true;
+            lastMouseX = event.touches[0].clientX;
+            lastMouseY = event.touches[0].clientY;
+        });
+
+        document.addEventListener('touchend', () => {
+            mouseDown = false;
+        });
+
+        document.addEventListener('touchmove', (event) => {
+            if (mouseDown) {
+                const deltaX = event.touches[0].clientX - lastMouseX;
+                const deltaY = event.touches[0].clientY - lastMouseY;
+                velocityA = -deltaY * 0.01;  // Invert direction to match swiping motion
+                velocityB = -deltaX * 0.01;  // Invert direction to match swiping motion
+                lastMouseX = event.touches[0].clientX;
+                lastMouseY = event.touches[0].clientY;
+            }
+        });
+
+        // Toggle automatic rotation
+        document.getElementById('toggle').addEventListener('click', () => {
+            autoRotate = !autoRotate;
+        });
     </script>
 </body>
 </html>
